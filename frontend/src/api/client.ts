@@ -19,3 +19,24 @@ export async function fetchJson<T>(path: string): Promise<T> {
   }
   return (await response.json()) as T
 }
+
+export type ActionOutcome = { ok: boolean; message: string; entry?: Record<string, unknown> | null }
+
+/** 动作类 POST：业务失败（ok=false）时把后端给出的可读原因带回来，而不是统一报“操作失败”。 */
+export async function postAction(path: string, values: Record<string, unknown>): Promise<ActionOutcome> {
+  const response = await request(path, {
+    method: 'POST',
+    body: JSON.stringify({ values }),
+  })
+  if (!response.ok) {
+    let detail = `接口返回 ${response.status}`
+    try {
+      const body = (await response.json()) as { detail?: string }
+      if (body.detail) detail = body.detail
+    } catch {
+      // 非 JSON 错误体时保留默认说明
+    }
+    return { ok: false, message: detail }
+  }
+  return (await response.json()) as ActionOutcome
+}
